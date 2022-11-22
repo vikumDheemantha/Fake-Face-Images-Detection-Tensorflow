@@ -25,10 +25,10 @@ def session(graph=None, allow_soft_placement=True,
             log_device_placement=False, allow_growth=True):
     """ return a Session with simple config """
 
-    config = tf.ConfigProto(allow_soft_placement=allow_soft_placement,
+    config = tf.compat.v1.ConfigProto(allow_soft_placement=allow_soft_placement,
                             log_device_placement=log_device_placement)
     config.gpu_options.allow_growth = allow_growth
-    return tf.Session(graph=graph, config=config)
+    return tf.compat.v1.Session(graph=graph, config=config)
 
 
 def tensors_filter(tensors, filters, combine_type='or'):
@@ -59,7 +59,7 @@ def tensors_filter(tensors, filters, combine_type='or'):
 
 
 def trainable_variables(filters=None, combine_type='or'):
-    t_var = tf.trainable_variables()
+    t_var = tf.compat.v1.trainable_variables()
     if filters is None:
         return t_var
     else:
@@ -86,33 +86,33 @@ def summary(tensor_collection, summary_type=['mean', 'stddev', 'max', 'min', 'sp
             name = re.sub('%s_[0-9]*/' % 'tower', '', tensor.name)
             name = re.sub(':', '-', name)
 
-        with tf.name_scope('summary_' + name):
+        with tf.compat.v1.name_scope('summary_' + name):
             summaries = []
             if len(tensor._shape) == 0:
-                summaries.append(tf.summary.scalar(name, tensor))
+                summaries.append(tf.compat.v1.summary.scalar(name, tensor))
             else:
                 if 'mean' in summary_type:
-                    mean = tf.reduce_mean(tensor)
-                    summaries.append(tf.summary.scalar(name + '/mean', mean))
+                    mean = tf.reduce_mean(input_tensor=tensor)
+                    summaries.append(tf.compat.v1.summary.scalar(name + '/mean', mean))
                 if 'stddev' in summary_type:
-                    mean = tf.reduce_mean(tensor)
-                    stddev = tf.sqrt(tf.reduce_mean(tf.square(tensor - mean)))
-                    summaries.append(tf.summary.scalar(name + '/stddev', stddev))
+                    mean = tf.reduce_mean(input_tensor=tensor)
+                    stddev = tf.sqrt(tf.reduce_mean(input_tensor=tf.square(tensor - mean)))
+                    summaries.append(tf.compat.v1.summary.scalar(name + '/stddev', stddev))
                 if 'max' in summary_type:
-                    summaries.append(tf.summary.scalar(name + '/max', tf.reduce_max(tensor)))
+                    summaries.append(tf.compat.v1.summary.scalar(name + '/max', tf.reduce_max(input_tensor=tensor)))
                 if 'min' in summary_type:
-                    summaries.append(tf.summary.scalar(name + '/min', tf.reduce_min(tensor)))
+                    summaries.append(tf.compat.v1.summary.scalar(name + '/min', tf.reduce_min(input_tensor=tensor)))
                 if 'sparsity' in summary_type:
-                    summaries.append(tf.summary.scalar(name + '/sparsity', tf.nn.zero_fraction(tensor)))
+                    summaries.append(tf.compat.v1.summary.scalar(name + '/sparsity', tf.nn.zero_fraction(tensor)))
                 if 'histogram' in summary_type:
-                    summaries.append(tf.summary.histogram(name, tensor))
+                    summaries.append(tf.compat.v1.summary.histogram(name, tensor))
                 if 'image' in summary_type:
-                    summaries.append(tf.summary.image(name, tensor))
-            return tf.summary.merge(summaries)
+                    summaries.append(tf.compat.v1.summary.image(name, tensor))
+            return tf.compat.v1.summary.merge(summaries)
 
     if not isinstance(tensor_collection, (list, tuple, dict)):
         tensor_collection = [tensor_collection]
-    with tf.name_scope('summaries'):
+    with tf.compat.v1.name_scope('summaries'):
         summaries = []
         if isinstance(tensor_collection, (list, tuple)):
             for tensor in tensor_collection:
@@ -120,13 +120,13 @@ def summary(tensor_collection, summary_type=['mean', 'stddev', 'max', 'min', 'sp
         else:
             for tensor, name in tensor_collection.items():
                 summaries.append(_summary(tensor, name, summary_type))
-        return tf.summary.merge(summaries)
+        return tf.compat.v1.summary.merge(summaries)
 
 
 def counter(scope='counter'):
-    with tf.variable_scope(scope):
+    with tf.compat.v1.variable_scope(scope):
         counter = tf.Variable(0, dtype=tf.int32, name='counter')
-        update_cnt = tf.assign(counter, tf.add(counter, 1))
+        update_cnt = tf.compat.v1.assign(counter, tf.add(counter, 1))
         return counter, update_cnt
 
 
@@ -137,7 +137,7 @@ def load_checkpoint(checkpoint_dir, session, var_list=None):
         ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
         ckpt_path = os.path.join(checkpoint_dir, ckpt_name)
     try:
-        restorer = tf.train.Saver(var_list)
+        restorer = tf.compat.v1.train.Saver(var_list)
         restorer.restore(session, ckpt_path)
         print(' [*] Loading successful! Copy variables from % s' % ckpt_path)
         return True
@@ -160,16 +160,16 @@ def memory_data_batch(memory_data_dict, batch_size, preprocess_fns={}, shuffle=T
         {'img': img_preprocess_fn, 'point': point_preprocess_fn}
     """
 
-    with tf.name_scope(scope, 'memory_data_batch'):
+    with tf.compat.v1.name_scope(scope, 'memory_data_batch'):
         fields = []
         tensor_dict = OrderedDict()
         for k in memory_data_dict:
             fields.append(k)
-            tensor_dict[k] = tf.convert_to_tensor(memory_data_dict[k])  # the same dtype of the input data
+            tensor_dict[k] = tf.convert_to_tensor(value=memory_data_dict[k])  # the same dtype of the input data
         data_num = tensor_dict[k].get_shape().as_list()[0]
 
         # slice to single example, and since it's memory data, the `capacity` is set as data_num
-        data_values = tf.train.slice_input_producer(list(tensor_dict.values()), shuffle=shuffle, capacity=data_num)
+        data_values = tf.compat.v1.train.slice_input_producer(list(tensor_dict.values()), shuffle=shuffle, capacity=data_num)
         data_keys = list(tensor_dict.keys())
         data_dict = {}
         for k, v in zip(data_keys, data_values):
@@ -181,14 +181,14 @@ def memory_data_batch(memory_data_dict, batch_size, preprocess_fns={}, shuffle=T
         # batch datas
         if shuffle:
             capacity = min_after_dequeue + (num_threads + 1) * batch_size
-            data_batch = tf.train.shuffle_batch(data_dict,
+            data_batch = tf.compat.v1.train.shuffle_batch(data_dict,
                                                 batch_size=batch_size,
                                                 capacity=capacity,
                                                 min_after_dequeue=min_after_dequeue,
                                                 num_threads=num_threads,
                                                 allow_smaller_final_batch=allow_smaller_final_batch)
         else:
-            data_batch = tf.train.batch(data_dict,
+            data_batch = tf.compat.v1.train.batch(data_dict,
                                         batch_size=batch_size,
                                         allow_smaller_final_batch=allow_smaller_final_batch)
 
@@ -219,7 +219,7 @@ class MemoryData:
         print(' [*] MemoryData: create session!')
         self.sess = session(graph=self.graph)
         self.coord = tf.train.Coordinator()
-        self.threads = tf.train.start_queue_runners(sess=self.sess, coord=self.coord)
+        self.threads = tf.compat.v1.train.start_queue_runners(sess=self.sess, coord=self.coord)
 
     def __len__(self):
         return self._data_num
@@ -272,7 +272,7 @@ def disk_image_batch(image_paths, batch_size, shape, preprocess_fn=None, shuffle
     preprocess_fn: single image preprocessing function
     """
 
-    with tf.name_scope(scope, 'disk_image_batch'):
+    with tf.compat.v1.name_scope(scope, 'disk_image_batch'):
         
         # batch datas
 #         image_list = read_labeled_image_list(image_paths)
@@ -281,10 +281,10 @@ def disk_image_batch(image_paths, batch_size, shape, preprocess_fn=None, shuffle
         print("#Data is ",data_num)
         image_list = tf.cast(image_list, tf.string)
 
-        input_queue = tf.train.slice_input_producer([image_list], shuffle=shuffle)
-        file_contents = tf.read_file(input_queue[0])
+        input_queue = tf.compat.v1.train.slice_input_producer([image_list], shuffle=shuffle)
+        file_contents = tf.io.read_file(input_queue[0])
         image = tf.image.decode_jpeg(file_contents, channels=3)
-        image = tf.image.resize_images(image, [shape[0], shape[1]])
+        image = tf.image.resize(image, [shape[0], shape[1]])
 
         channels = 3
         image.set_shape(shape)
@@ -298,10 +298,10 @@ def disk_image_batch(image_paths, batch_size, shape, preprocess_fn=None, shuffle
         crop_size = 108
         re_size = 64
 #         image = tf.image.crop_to_bounding_box(image, 65, 35, 108, 108)
-        image = tf.to_float(tf.image.resize_images(image, [re_size, re_size], method=tf.image.ResizeMethod.BICUBIC)) / 127.5 - 1
+        image = tf.cast(tf.image.resize(image, [re_size, re_size], method=tf.image.ResizeMethod.BICUBIC), dtype=tf.float32) / 127.5 - 1
         image = tf.cast(image, tf.float32)
 
-        img_batch = tf.train.batch([image], batch_size=batch_size, capacity=32,name='images')
+        img_batch = tf.compat.v1.train.batch([image], batch_size=batch_size, capacity=32,name='images')
 
         return img_batch, data_num
 
@@ -326,7 +326,7 @@ class DiskImageData:
         print(' [*] DiskImageData: create session!')
         self.sess = session(graph=self.graph)
         self.coord = tf.train.Coordinator()
-        self.threads = tf.train.start_queue_runners(sess=self.sess, coord=self.coord)
+        self.threads = tf.compat.v1.train.start_queue_runners(sess=self.sess, coord=self.coord)
 
     def __len__(self):
         return self._data_num

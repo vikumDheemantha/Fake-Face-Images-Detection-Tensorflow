@@ -9,7 +9,6 @@ import numpy as np
 import tensorflow as tf
 import models_64x64 as models
 
-
 """ param """
 epoch = 50
 batch_size = 100
@@ -28,38 +27,37 @@ with tf.device('/gpu:%d' % gpu_id):
 
     ''' graph '''
     # inputs
-    z = tf.placeholder(tf.float32, shape=[None, z_dim])
+    z = tf.compat.v1.placeholder(tf.float32, shape=[None, z_dim])
 
     # generate
     gene = generator(z, training=False, reuse=False)
-
 
 """ train """
 ''' init '''
 # session
 sess = utils.session()
 # saver
-saver = tf.train.Saver()
+saver = tf.compat.v1.train.Saver()
 
 ''' initialization '''
 ckpt_dir = './checkpoints/celeba_dcgan/Epoch_(49)_(2915of3165).ckpt'
 saver.restore(sess, ckpt_dir)
-sess.run(tf.global_variables_initializer())
+sess.run(tf.compat.v1.global_variables_initializer())
 saver.restore(sess, ckpt_dir)
 
 try:
-    
+
     for it in range(2000):
         z_ipt = np.random.normal(size=[batch_size, z_dim])
         img = sess.run(gene, feed_dict={z: z_ipt})
 
         save_dir = './results/celeba_dcgan'
         utils.mkdir(save_dir + '/')
-        utils.batchimwrite(img, '%s/img%d' % (save_dir,it))
-        if it%1000:
-			print("Batch %d images are done!!"%(it))
+        utils.batchimwrite(img, '%s/img%d' % (save_dir, it))
+        if it % 1000:
+            print("Batch %d images are done!!" % (it))
 
-except Exception, e:
+except Exception as e:
     traceback.print_exc()
 finally:
     print(" [*] Close main session!")
